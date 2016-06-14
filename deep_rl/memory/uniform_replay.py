@@ -8,21 +8,18 @@ class UniformExperienceReplay:
     """
     Store experiences for future lookup and training.
 
-    Stored experiences will be sampled with a uniform distribution.
+    Stored experiences will be sampled from a uniform distribution.
     """
-    def __init__(self, capacity, batch_size, history_len, ob_shape, ob_dtype, flatten=False):
+    def __init__(self, capacity, history_len, ob_shape, ob_dtype, flatten=False):
         self.capacity = capacity
-        self.batch_size = batch_size
         self.history_len = history_len
         self.flatten = flatten
         self.index = 0
         self.size = 0
 
-        obs_memory_shape = [capacity] + list(ob_shape)
-        obs_batch_shape = [batch_size, history_len] + list(ob_shape)
+        obs_replay_shape = [capacity] + list(ob_shape)
 
-        # memory
-        self.obs = np.zeros(obs_memory_shape, dtype=ob_dtype)
+        self.obs = np.zeros(obs_replay_shape, dtype=ob_dtype)
         self.actions = np.zeros(capacity, dtype=np.uint8)
         self.rewards = np.zeros(capacity, dtype=np.float32)
         self.terminals = np.zeros(capacity, dtype=np.bool)
@@ -39,9 +36,12 @@ class UniformExperienceReplay:
         self.index = (self.index + 1) % self.capacity
         self.size = min(self.capacity, self.size + 1)
 
-    def sample(self):
+    def sample(self, batch_size):
+        """
+        Sample a batch of experiences
+        """
         end = self.size-self.history_len-1
-        idxs = np.random.randint(0, end, self.batch_size)
+        idxs = np.random.randint(0, end, batch_size)
 
         b_actions = self.actions[idxs]
         b_rewards =  self.rewards[idxs]
@@ -53,8 +53,8 @@ class UniformExperienceReplay:
         b_next_obs = np.array(b_next_obs)
 
         if self.flatten:
-            b_obs = b_obs.reshape(self.batch_size, -1)
-            b_next_obs = b_next_obs.reshape(self.batch_size, -1)
+            b_obs = b_obs.reshape(batch_size, -1)
+            b_next_obs = b_next_obs.reshape(batch_size, -1)
 
         return b_obs, b_next_obs, b_actions, b_rewards, b_terminals
 

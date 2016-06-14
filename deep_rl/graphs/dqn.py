@@ -7,12 +7,13 @@ from .utils import get_vars_from_scope
 
 def create_dqn_graph(n_action, model, opt, gamma=0.99):
     """
-    Implements DQN
+    Implements Deep Q-Learning
 
     if terminal:
         y = r
     else:
         y = r + gamma * max_a' Q(s', a', theta-)
+
     L = (y - Q(s, a; theta)) ** 2
     """
     actions = tf.placeholder(tf.int32)
@@ -24,10 +25,10 @@ def create_dqn_graph(n_action, model, opt, gamma=0.99):
     p_vars = get_vars_from_scope('policy-model')
     t_vars = get_vars_from_scope('target-model')
 
-    terminal_floats = (tf.cast(tf.logical_not(terminals), tf.float32))
+    mask = (tf.cast(tf.logical_not(terminals), tf.float32))
 
     a = tf.one_hot(actions, depth=n_action, on_value=1.0, off_value=0.0)
-    y = rewards + terminal_floats * gamma * tf.reduce_max(t_out, 1)
+    y = rewards + mask * gamma * tf.reduce_max(t_out, 1)
 
     policy_probs = tf.nn.softmax(p_out)
     loss_op = tf.reduce_mean(tf.square(y - tf.reduce_sum(p_out * a, 1)))

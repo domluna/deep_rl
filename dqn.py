@@ -14,7 +14,7 @@ import time
 from tensorflow.contrib import learn, layers
 from deep_rl.memory import UniformExperienceReplay, Buffer
 from deep_rl.graphs import create_dqn_graph
-from envs import EnvWrapper
+from deep_rl.envs import EnvWrapper
 
 def simple_model(input_shape, hidden_sizes, n_action, name=None):
     with tf.variable_scope(name or 'simple_model'):
@@ -37,7 +37,7 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 with g.as_default(), tf.Session(config=config) as sess, tf.device('/cpu:0'):
     opt = tf.train.AdamOptimizer(learning_rate=1e-4)
-    model = lambda name: simple_model(input_shape, [40, 40], n_action, name=name)
+    model = lambda name: simple_model(input_shape, [20], n_action, name=name)
     graph_ops = dqn_graph(n_action, model, opt)
     replay = UniformExperienceReplay(replay_capacity, batch_size, history_len, ob_shape, np.float32, flatten=True)
     buf = Buffer(history_len, flatten=True)
