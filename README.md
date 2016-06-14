@@ -7,6 +7,9 @@ Library for Deep Reinforcement Learning in Tensorflow.
 ## Coming soon
 
 [ ] setup.py
+
 [ ] Parallel trajectory sampling
+
 [ ] TRPO
+
 [ ] DDQN
