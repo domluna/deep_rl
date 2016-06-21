@@ -1,11 +1,12 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
-from .utils import get_vars_from_scope
 
-def create_vpg_graph(n_action, policy_model, value_model, policy_opt, value_opt):
+from deep_rl.misc.utils import get_vars_from_scope
+
+
+def create_vpg_graph(n_action, policy_model, value_model, policy_opt,
+                     value_opt):
     """
     Implements Vanilla Policy Gradient
     """
@@ -20,23 +21,23 @@ def create_vpg_graph(n_action, policy_model, value_model, policy_opt, value_opt)
 
     probs = tf.nn.softmax(p_output)
     a = tf.one_hot(actions, depth=n_action, on_value=1.0, off_value=0.0)
-    log_lik = tf.log(tf.reduce_sum(probs * a, 1))
-    pf_loss_op = -tf.reduce_mean(log_lik * advantages, name="pf_loss_op")
-    pf_train_op = policy_opt.minimize(pf_loss_op, var_list=p_vars, name="pf_train_op")
+    log_probs = tf.log(tf.reduce_sum(probs * a, 1))
+    pf_loss_op = -tf.reduce_mean(log_probs * advantages, name="pf_loss_op")
+    pf_train_op = policy_opt.minimize(pf_loss_op,
+                                      var_list=p_vars,
+                                      name="pf_train_op")
 
     vf_loss_op = tf.reduce_mean((v_output - returns)**2)
-    vf_train_op = value_opt.minimize(vf_loss_op, var_list=v_vars, name="vf_train_op")
+    vf_train_op = value_opt.minimize(vf_loss_op,
+                                     var_list=v_vars,
+                                     name="vf_train_op")
 
-    return dict(
-        actions=actions,
-        advantages=advantages,
-        returns=returns,
-
-        policy_input=p_input,
-        policy_probs=probs,
-        policy_train_op=pf_train_op,
-
-        value_input=v_input,
-        value_predict=v_output,
-        value_train_op=vf_train_op
-    )
+    return dict(actions=actions,
+                advantages=advantages,
+                returns=returns,
+                policy_input=p_input,
+                policy_probs=probs,
+                policy_train_op=pf_train_op,
+                value_input=v_input,
+                value_predict=v_output,
+                value_train_op=vf_train_op)

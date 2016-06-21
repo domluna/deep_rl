@@ -4,9 +4,11 @@ from __future__ import division
 
 import gym
 
+
 class EnvWrapper:
     """Wrapper around OpenAI Gym environments allowing
     for observation and reward preprocessing."""
+
     def __init__(self, name, ob_filter=None, reward_filter=None):
         self.name = name
         self.env = gym.make(name)

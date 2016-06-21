@@ -1,18 +1,18 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-from scipy.signal import lfilter
 import numpy as np
+from scipy.signal import lfilter
+
 
 def discount(x, gamma):
     return lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
-def process_trajs(trajs, value_predict, gamma, gae_lambda):
+
+def compute_vpg_advantage(trajs, value_out, gamma, gae_lambda):
     for t in trajs:
         t["returns"] = discount(t["rewards"], gamma)
         t["rewards_sum"] = t["rewards"].sum()
-        v = t["baselines"] = value_predict(t["obs"])
+        v = t["baselines"] = value_out(t["states"])
         # we need V(s_t) and V(s_t+1), this makes the
         # later calculation easier
         v1 = np.append(v, 0 if t["terminated"] else v[-1])
@@ -23,3 +23,7 @@ def process_trajs(trajs, value_predict, gamma, gae_lambda):
     std = all_advs.std()
     for t in trajs:
         t["advantages"] = (t["advantages"] - mean) / std
+
+
+def compute_a3c_returns():
+    pass

@@ -1,9 +1,9 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
-from .utils import get_vars_from_scope
+
+from deep_rl.misc.utils import get_vars_from_scope
+
 
 def create_dqn_graph(n_action, model, opt, gamma=0.99):
     """
@@ -36,18 +36,17 @@ def create_dqn_graph(n_action, model, opt, gamma=0.99):
     update_targets_op = [tf.assign(tv, pv) for (tv, pv) in zip(t_vars, p_vars)]
 
     return dict(
-            # inputs
-            policy_input=p_in,
-            target_input=t_in,
-            actions=actions,
-            rewards=rewards,
-            terminals=terminals,
-            # outputs
-            policy_qvals=p_out,
-            target_qvals=t_out,
-            policy_probs=policy_probs,
-            loss_op=loss_op,
-            train_op=train_op,
-            # misc
-            update_targets_op=update_targets_op
-            )
+        # inputs
+        policy_input=p_in,
+        target_input=t_in,
+        actions=actions,
+        rewards=rewards,
+        terminals=terminals,
+        # outputs
+        policy_qvals=p_out,
+        target_qvals=t_out,
+        policy_probs=policy_probs,
+        loss_op=loss_op,
+        train_op=train_op,
+        # misc
+        update_targets_op=update_targets_op)

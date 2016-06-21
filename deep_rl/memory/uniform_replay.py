@@ -4,13 +4,20 @@ from __future__ import division
 
 import numpy as np
 
+
 class UniformExperienceReplay:
     """
     Store experiences for future lookup and training.
 
     Stored experiences will be sampled from a uniform distribution.
     """
-    def __init__(self, capacity, history_len, ob_shape, ob_dtype, flatten=False):
+
+    def __init__(self,
+                 capacity,
+                 history_len,
+                 ob_shape,
+                 ob_dtype,
+                 flatten=False):
         self.capacity = capacity
         self.history_len = history_len
         self.flatten = flatten
@@ -40,15 +47,16 @@ class UniformExperienceReplay:
         """
         Sample a batch of experiences
         """
-        end = self.size-self.history_len-1
+        end = self.size - self.history_len - 1
         idxs = np.random.randint(0, end, batch_size)
 
         b_actions = self.actions[idxs]
-        b_rewards =  self.rewards[idxs]
+        b_rewards = self.rewards[idxs]
         b_terminals = self.terminals[idxs]
 
-        b_obs = map(lambda i: self.obs[i:i+self.history_len], idxs)
-        b_next_obs = map(lambda i: self.obs[i+1:i+1+self.history_len], idxs)
+        b_obs = map(lambda i: self.obs[i:i + self.history_len], idxs)
+        b_next_obs = map(lambda i: self.obs[i + 1:i + 1 + self.history_len],
+                         idxs)
         b_obs = np.array(b_obs)
         b_next_obs = np.array(b_next_obs)
 

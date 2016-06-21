@@ -5,8 +5,10 @@ from __future__ import division
 from collections import deque
 import numpy as np
 
+
 class Buffer:
     """Rolling window of current state"""
+
     def __init__(self, capacity, flatten=False):
         self.capacity = capacity
         self.flatten = flatten
