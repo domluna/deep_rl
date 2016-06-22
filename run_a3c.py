@@ -20,7 +20,7 @@ flags.DEFINE_string("name", "CartPole-v0",
 flags.DEFINE_float("gamma", 0.99, "Discount rate")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
 flags.DEFINE_float("epsilon", 0.05, "Exploration rate")
-flags.DEFINE_float('beta', 0.02, "Beta regularization term for A3C")
+flags.DEFINE_float('beta', 0, "Beta regularization term for A3C")
 flags.DEFINE_integer("total_steps", 500000, "Number of iterations")
 flags.DEFINE_integer("max_traj_len", 5,
                      "Maximum steps taken during a trajectory")
@@ -46,13 +46,13 @@ def sample_policy_action(probs):
     return action_index
 
 
-def simple_nn(input_shape, hidden_sizes, n_action, name='simple_nn'):
+def simple_nn(input_shape, n_action, hidden_sizes, name='simple_nn'):
     states = tf.placeholder("float", shape=input_shape)
     with tf.variable_scope(name):
         hiddens = learn.ops.dnn(states, hidden_sizes, activation=tf.nn.relu)
-        policy = layers.fully_connected(hiddens, n_action)
-        value = layers.fully_connected(hiddens, 1)
-        return states, policy, value
+        probs = tf.nn.softmax(layers.fully_connected(hiddens, n_action), name="probs")
+        value = layers.fully_connected(hiddens, 1, name="value")
+        return states, probs, value
 
 
 env = gym.make(FLAGS.name)
@@ -77,12 +77,18 @@ def main(unused_args):
     config.gpu_options.allow_growth = True
     with g.as_default(), tf.Session(
             config=config) as sess, tf.device('/cpu:0'):
+
+        if FLAGS.beta == 0:
+            beta = None
+        else:
+            beta = tf.Variable(beta, trainable=False)
+
         opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
-        create_model = lambda name: simple_nn(input_shape, [20], n_action, name=name)
-        graph_ops = create_a3c_graph(n_action,
-                                     create_model,
+        model = lambda states, n_action, name: simple_nn(states, n_action, [20], name=name)
+        graph_ops = create_a3c_graph(input_shape, n_action,
+                                     model,
                                      opt,
-                                     beta=FLAGS.beta,
+                                     beta=beta,
                                      name='a3c')
 
         # Finalize the graph! If we're adding ops to it after

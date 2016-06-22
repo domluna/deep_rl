@@ -3,8 +3,11 @@ from __future__ import absolute_import, division, print_function
 import tensorflow as tf
 
 
-def get_vars_from_scope(scope):
+def get_vars_from_scope(scope, graph=None):
     return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+
+def first_in_collection(name):
+    return tf.get_collection(name)[0]
 
 
 def kl_divergence(old_probs, new_probs):
