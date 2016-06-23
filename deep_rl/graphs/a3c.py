@@ -34,8 +34,8 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     log_probs = -tf.log(tf.reduce_sum(probs * a, 1))
 
     policy_loss = log_probs * (returns - value)
-    # if beta:
-    #     policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs), 1))
+    if beta:
+        policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs), 1))
     value_loss = tf.square(returns - value)
     loss = tf.reduce_mean(policy_loss + value_loss)
 
