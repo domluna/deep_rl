@@ -26,8 +26,10 @@ flags.DEFINE_float("epsilon", 0.05, "Exploration rate")
 flags.DEFINE_float('beta', 0.02, "Beta regularization term for A3C")
 flags.DEFINE_integer("max_traj_len", 4,
                      "Maximum steps taken during a trajectory")
-flags.DEFINE_integer("save_interval", 600, "Interval to save model graph")
-flags.DEFINE_integer("eval_interval", 10000, "Interval to evaluate model")
+flags.DEFINE_integer("save_model_interval", 120,
+                     "Interval to save model (seconds)")
+flags.DEFINE_integer("save_summaries_interval", 120,
+                     "Interval to save summaries (seconds)")
 flags.DEFINE_integer(
     "num_threads", 1,
     "Number of threads or environments to explore concurrently")
@@ -36,7 +38,6 @@ flags.DEFINE_string(
     "outdir", "/tmp/mydir",
     "Prefix for monitoring, summary and checkpoint directories")
 flags.DEFINE_bool("render", False, "Render environment during training")
-flags.DEFINE_bool("resume", False, "Wipe previously monitored Gym data")
 
 
 def sample_policy_action(probs):
@@ -72,44 +73,48 @@ tf.set_random_seed(FLAGS.seed)
 random.seed(FLAGS.seed)
 monitor_env.seed(FLAGS.seed)
 
-# monitor_env.monitor.start(monitor_dir, force=True)
-monitor_env.monitor.start(monitor_dir, resume=True)
+# resume from previous training. If there was no previous training
+# acts as if we're starting fresh.
 
+print("Input shape {}".format(input_shape))
+print("Number of Actions {}".format(n_action))
 
 def main(_):
     g = tf.Graph()
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with g.as_default():
-        with tf.device('/cpu:0'):
-            opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
-            model = lambda states, n_action: simple_nn(states, n_action, [32, 32])
-            create_a3c_graph(input_shape,
-                             n_action,
-                             model,
-                             opt,
-                             beta=FLAGS.beta,
-                             name='a3c')
+        opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+        model = lambda states, n_action: simple_nn(states, n_action, [64, 64])
+        create_a3c_graph(input_shape,
+                         n_action,
+                         model,
+                         opt,
+                         beta=FLAGS.beta)
 
         global_step = first_in_collection("global_step")
         sv = tf.train.Supervisor(g,
                                  logdir=FLAGS.outdir,
                                  global_step=global_step,
-                                 save_model_secs=60,
-                                 save_summaries_secs=60)
+                                 save_model_secs=FLAGS.save_model_interval,
+                                 save_summaries_secs=FLAGS.save_summaries_interval)
 
-        # T = tf.train.global_step(sess, global_step)
 
         with sv.managed_session(config=config) as sess:
             agent = A3CAgent(FLAGS.name, g, sess, FLAGS.gamma, FLAGS.epsilon,
                              FLAGS.max_traj_len, sample_policy_action)
+            T = tf.train.global_step(sess, global_step)
+
+            print("Starting from global step {}".format(T))
 
             try:
                 coord = sv.coord
                 envs = [EnvWrapper(FLAGS.name)
                         for _ in range(FLAGS.num_threads - 1)]
                 envs.insert(0, monitor_env)
-                # monitor the first env for future upload to scoreboard
+
+                monitor_env.monitor.start(monitor_dir, resume=True)
+
                 threads = [threading.Thread(target=agent.run,
                                             args=(coord, envs[i]))
                            for i in range(FLAGS.num_threads)]
@@ -119,13 +124,6 @@ def main(_):
             except Exception as e:
                 print("Error training model ...")
                 print(e)
-
-        # if t % FLAGS.eval_interval == 0:
-        #     total_reward = agent.test()
-        #     print("-------------------------")
-        #     print("Current step: {}".format(0))
-        #     print("Total Reward = {:.2f}".format(total_reward))
-        #     print("-------------------------")
 
 
 if __name__ == "__main__":

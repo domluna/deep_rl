@@ -1,10 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
+from scipy.signal import lfilter
 
 
 def get_vars_from_scope(scope, graph=None):
     return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
+
 
 def first_in_collection(name):
     return tf.get_collection(name)[0]
@@ -28,3 +30,7 @@ def likelihood_ratio(x, old_probs, new_probs):
 def entropy(probs):
     with tf.op_scope([probs], 'entropy'):
         return -tf.reduce_sum(probs * tf.log(probs), 1)
+
+
+def discount(x, gamma):
+    return lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]

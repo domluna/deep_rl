@@ -14,6 +14,7 @@ class EnvWrapper:
         self.reward_filter = reward_filter
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        self.spec = self.env.spec
 
     def step(self, action):
         s, reward, done, info = self.env.step(action)

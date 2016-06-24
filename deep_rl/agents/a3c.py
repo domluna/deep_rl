@@ -33,6 +33,7 @@ class A3CAgent:
     def run(self, coord, env):
         t = 0
         t_start = 0
+        ep_reward = 0
         actions = []
         states = []
         rewards = []
@@ -62,7 +63,9 @@ class A3CAgent:
                 actions.append(action)
                 rewards.append(reward)
 
+                ep_reward += reward
                 t += 1
+
                 # update params
                 if done or t - t_start == self._max_traj_len:
                     last_state = states[-1]
@@ -85,31 +88,33 @@ class A3CAgent:
                     rewards = []
                     t_start = t
 
-                if done:
+                if done or t % env.spec.timestep_limit == 0:
                     state = env.reset()
+                    print("Episode reward {} {}".format(ep_reward, t))
+                    ep_reward = 0
                 else:
                     state = next_state
 
         except Exception as e:
             coord.request_stop(e)
 
-    def test(self, name=None, render=True):
-        if not name:
-            name = self._env_name
-        env = self._create_env(name)
-        policy = self._g.get_collection("policy")[0]
-        _states = self._g.get_collection("states")[0]
-        done = False
-        total_reward = 0
-
-        state = env.reset()
-        while not done:
-            probs = self._s.run(
-                policy,
-                feed_dict={_states: state.reshape(1, *state.shape)})[0]
-            action = self._action_sampler(probs)
-            state, reward, done, info = env.step(action)
-            total_reward += reward
-        env.close()
-
-        return total_reward
+    # def test(self, name=None, render=True):
+    #     if not name:
+    #         name = self._env_name
+    #     env = self._create_env(name)
+    #     policy = self._g.get_collection("policy")[0]
+    #     _states = self._g.get_collection("states")[0]
+    #     done = False
+    #     total_reward = 0
+    #
+    #     state = env.reset()
+    #     while not done:
+    #         probs = self._s.run(
+    #             policy,
+    #             feed_dict={_states: state.reshape(1, *state.shape)})[0]
+    #         action = self._action_sampler(probs)
+    #         state, reward, done, info = env.step(action)
+    #         total_reward += reward
+    #     env.close()
+    #
+    #     return total_reward

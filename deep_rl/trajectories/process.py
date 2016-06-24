@@ -1,11 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-from scipy.signal import lfilter
 
-
-def discount(x, gamma):
-    return lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+from deep_rl.misc import discount
 
 
 def compute_vpg_advantage(trajs, value_out, gamma, gae_lambda):
@@ -23,7 +20,3 @@ def compute_vpg_advantage(trajs, value_out, gamma, gae_lambda):
     std = all_advs.std()
     for t in trajs:
         t["advantages"] = (t["advantages"] - mean) / std
-
-
-def compute_a3c_returns():
-    pass

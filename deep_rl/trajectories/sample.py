@@ -7,6 +7,7 @@ import numpy as np
 from deep_rl.misc.distributions import categorical_sample
 from six.moves import range
 
+
 def sample_traj(env, compute_action, max_traj_len, render=False):
     traj = defaultdict(list)
     traj["terminated"] = False
