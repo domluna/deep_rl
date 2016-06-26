@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 
+from deep_rl.misc import slice_2d
+
 
 def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     """
@@ -30,18 +32,17 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     tf.add_to_collection("policy", probs)
     tf.add_to_collection("value", value)
 
-    a = tf.one_hot(actions, depth=n_action, on_value=1.0, off_value=0.0)
-    log_probs = -tf.log(tf.reduce_sum(probs * a, 1))
+    N = tf.shape(states)[0]
+    p_vals = slice_2d(probs, tf.range(0, N), actions)
+    surr_loss = -tf.log(p_vals + 1e-8)
 
-    policy_loss = log_probs * (returns - value)
+    policy_loss = surr_loss * (returns - value)
     if beta:
-        policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs), 1))
+        policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs + 1e-8), 1))
     value_loss = tf.square(returns - value)
     loss = tf.reduce_mean(policy_loss + value_loss)
 
-    global_step = tf.Variable(0, trainable=False)
-    train_op = opt.minimize(loss, global_step=global_step)
+    train_op = opt.minimize(loss)
 
-    tf.add_to_collection("global_step", global_step)
-    tf.add_to_collection("train_op", train_op)
     tf.add_to_collection("loss", loss)
+    tf.add_to_collection("train_op", train_op)

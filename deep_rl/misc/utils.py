@@ -4,6 +4,15 @@ import tensorflow as tf
 from scipy.signal import lfilter
 
 
+def slice_2d(x, inds0, inds1):
+    inds0 = tf.cast(inds0, tf.int64)
+    inds1 = tf.cast(inds1, tf.int64)
+    shape = tf.cast(tf.shape(x), tf.int64)
+    ncols = shape[1]
+    x_flat = tf.reshape(x, [-1])
+    return tf.gather(x_flat, inds0 * ncols + inds1)
+
+
 def get_vars_from_scope(scope, graph=None):
     return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
 

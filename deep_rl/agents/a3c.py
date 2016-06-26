@@ -14,25 +14,26 @@ from six.moves import range
 class A3CAgent:
     """A3CAgent"""
 
-    def __init__(self, env_name, graph, session, gamma, epsilon, max_traj_len,
-                 action_sampler):
+    def __init__(self, graph, gamma, epsilon, max_traj_len, action_sampler):
         """
         graph should have the placeholders called "states", "actions",
         and "returns". It should also have operations called "loss_op", "train_op",
         "probs", and "value".
         """
 
-        self._env_name = env_name
         self._g = graph
-        self._s = session
         self._gamma = gamma
         self._epsilon = epsilon
         self._max_traj_len = max_traj_len
         self._action_sampler = action_sampler
 
-    def run(self, coord, env):
+        T = graph.get_collection("global_step")[0]
+        self._incr_T = tf.assign_add(T, 1)
+
+    def run(self, t_id, session, coord, env):
         t = 0
-        t_start = 0
+        t_start = 0  # for updating params
+        t_ep = 0  # for checking is an episode is done
         ep_reward = 0
         actions = []
         states = []
@@ -53,10 +54,11 @@ class A3CAgent:
                 if random.random() < self._epsilon:
                     action = env.action_space.sample()
                 else:
-                    probs = self._s.run(
-                        policy,
-                        feed_dict={_states: state.reshape(1, *state.shape)})[0]
-                    action = self._action_sampler(probs)
+                    # probs = session.run(policy,
+                    #                     feed_dict={_states: state.reshape(1, *state.shape)})[0]
+                    # action = self._action_sampler(probs)[0]
+                    probs = session.run(policy, feed_dict={_states: state.reshape(1, *state.shape)})
+                    action = self._action_sampler(probs)[0]
 
                 next_state, reward, done, info = env.step(action)
                 states.append(state)
@@ -65,20 +67,20 @@ class A3CAgent:
 
                 ep_reward += reward
                 t += 1
+                session.run(self._incr_T)
 
                 # update params
                 if done or t - t_start == self._max_traj_len:
                     last_state = states[-1]
                     val = 0
                     if not done:
-                        val = self._s.run(
-                            value,
-                            feed_dict={_states: last_state.reshape(
-                                1, *last_state.shape)})
+                        val = session.run(value,
+                                          feed_dict={_states:
+                                                     last_state.reshape(1, *last_state.shape)})
                     rewards.append(val)
                     returns = discount(rewards, self._gamma)[:-1]
 
-                    self._s.run(train_op,
+                    session.run([train_op],
                                 feed_dict={_states: states,
                                            _returns: returns,
                                            _actions: actions})
@@ -88,33 +90,15 @@ class A3CAgent:
                     rewards = []
                     t_start = t
 
-                if done or t % env.spec.timestep_limit == 0:
+                # TODO: see if we can monitor all the envs
+                if done or t - t_ep == env.spec.timestep_limit:
                     state = env.reset()
-                    print("Episode reward {} {}".format(ep_reward, t))
+                    print("Thread id {}: Episode reward = {}, timestep = {}".format(t_id, ep_reward,
+                                                                                    t))
                     ep_reward = 0
+                    t_ep = t
                 else:
                     state = next_state
 
         except Exception as e:
             coord.request_stop(e)
-
-    # def test(self, name=None, render=True):
-    #     if not name:
-    #         name = self._env_name
-    #     env = self._create_env(name)
-    #     policy = self._g.get_collection("policy")[0]
-    #     _states = self._g.get_collection("states")[0]
-    #     done = False
-    #     total_reward = 0
-    #
-    #     state = env.reset()
-    #     while not done:
-    #         probs = self._s.run(
-    #             policy,
-    #             feed_dict={_states: state.reshape(1, *state.shape)})[0]
-    #         action = self._action_sampler(probs)
-    #         state, reward, done, info = env.step(action)
-    #         total_reward += reward
-    #     env.close()
-    #
-    #     return total_reward
