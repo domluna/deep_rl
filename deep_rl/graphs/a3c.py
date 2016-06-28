@@ -34,9 +34,9 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
 
     N = tf.shape(states)[0]
     p_vals = slice_2d(probs, tf.range(0, N), actions)
-    surr_loss = -tf.log(p_vals + 1e-8)
+    surr_loss = tf.log(p_vals + 1e-8)
 
-    policy_loss = surr_loss * (returns - value)
+    policy_loss = -surr_loss * (returns - value)
     if beta:
         policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs + 1e-8), 1))
     value_loss = tf.square(returns - value)
