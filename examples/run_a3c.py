@@ -23,9 +23,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("name", "CartPole-v0", "Name of the environment to train/play")
 flags.DEFINE_float("gamma", 0.99, "Discount rate")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate")
-# flags.DEFINE_float("epsilon", 0.05, "Exploration rate")
 flags.DEFINE_float('beta', 0.01, "Beta regularization term for A3C")
-flags.DEFINE_integer("max_traj_len", 4, "Maximum steps taken during a trajectory")
+flags.DEFINE_integer("a3c_update_interval", 4, "Number of timesteps before updating the actor-critic model")
 flags.DEFINE_integer("save_model_interval", 120, "Interval to save model (seconds)")
 flags.DEFINE_integer("save_summaries_interval", 120, "Interval to save summaries (seconds)")
 flags.DEFINE_integer("num_threads", 1, "Number of threads or environments to explore concurrently")
@@ -36,27 +35,8 @@ flags.DEFINE_string("outdir", "", "Prefix for monitoring, summary and checkpoint
 flags.DEFINE_bool("render", False, "Render environment during training")
 
 
-def sample_policy_action(probs):
-    """
-    Sample an action from an action probability distribution output by
-    the policy network.
-    """
-    # Subtract a tiny value from probabilities in order to avoid
-    # "ValueError: sum(pvals[:-1]) > 1.0" in numpy.multinomial
-    probs = probs - np.finfo(np.float32).epsneg
-
-    histogram = np.random.multinomial(1, probs)
-    action_index = int(np.nonzero(histogram)[0])
-    return action_index
-
-
-def simple_nn(states, n_action, hidden_sizes):
-    hiddens = learn.ops.dnn(states, hidden_sizes, activation=tf.nn.tanh)
-    return hiddens
-    probs = tf.nn.softmax(layers.fully_connected(hiddens, n_action))
-    value = layers.fully_connected(hiddens, 1)
-    return probs, value
-
+def simple_nn(states, hidden_sizes):
+    return learn.ops.dnn(states, hidden_sizes, activation=tf.nn.tanh)
 
 outdir = FLAGS.outdir
 if outdir == "":
@@ -84,13 +64,16 @@ def main(_):
     g = tf.Graph()
     with g.as_default(), tf.device('/cpu:0'):
         opt = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
-        model = lambda states, n_action: simple_nn(states, n_action, [64, 64])
+        hiddens = [64, 64]
+
+        def model(states):
+            return simple_nn(states, hiddens)
         create_a3c_graph(input_shape, n_action, model, opt, beta=FLAGS.beta)
 
         T = tf.Variable(0, trainable=False)
         tf.add_to_collection("global_step", T)
 
-        agent = A3CAgent(g, FLAGS.exploration_steps, FLAGS.total_steps, FLAGS.gamma, FLAGS.max_traj_len, sample_policy_action)
+        agent = A3CAgent(g, FLAGS.exploration_steps, FLAGS.total_steps, FLAGS.gamma, FLAGS.a3c_update_interval, categorical_sample)
 
         sv = tf.train.Supervisor(g,
                                  logdir=outdir,

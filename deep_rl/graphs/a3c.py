@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
+import tensorflow.contrib.layers as layers
 
 from deep_rl.misc import slice_2d, get_vars_from_scope
 
@@ -30,10 +31,10 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     tf.add_to_collection("value_in", value_in)
 
     with tf.variable_scope('actor'):
-        pnn = model(policy_in, n_action)
+        pnn = model(policy_in)
         probs = tf.nn.softmax(layers.fully_connected(pnn, n_action))
     with tf.variable_scope('critic'):
-        v_out = model(value_in, n_action)
+        v_out = model(value_in)
         value = layers.fully_connected(v_out, 1)
 
     tf.add_to_collection("policy_out", probs)
