@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 
-from deep_rl.misc import slice_2d
+from deep_rl.misc import slice_2d, get_vars_from_scope
 
 
 def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
@@ -21,16 +21,26 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     """
     actions = tf.placeholder(tf.int32, shape=(None))
     returns = tf.placeholder(tf.float32, shape=(None))
-    states = tf.placeholder(tf.float32, shape=input_shape)
+    policy_in = tf.placeholder(tf.float32, shape=input_shape)
+    value_in = tf.placeholder(tf.float32, shape=input_shape)
 
     tf.add_to_collection("actions", actions)
     tf.add_to_collection("returns", returns)
-    tf.add_to_collection("states", states)
+    tf.add_to_collection("policy_in", policy_in)
+    tf.add_to_collection("value_in", value_in)
 
-    probs, value = model(states, n_action)
+    with tf.variable_scope('actor'):
+        pnn = model(policy_in, n_action)
+        probs = tf.nn.softmax(layers.fully_connected(pnn, n_action))
+    with tf.variable_scope('critic'):
+        v_out = model(value_in, n_action)
+        value = layers.fully_connected(v_out, 1)
 
-    tf.add_to_collection("policy", probs)
-    tf.add_to_collection("value", value)
+    tf.add_to_collection("policy_out", probs)
+    tf.add_to_collection("value_out", value)
+
+    actor_vars = get_vars_from_scope('actor')
+    critic_vars = get_vars_from_scope('critic')
 
     N = tf.shape(states)[0]
     p_vals = slice_2d(probs, tf.range(0, N), actions)
@@ -39,10 +49,13 @@ def create_a3c_graph(input_shape, n_action, model, opt, beta=None, name='a3c'):
     policy_loss = -surr_loss * (returns - value)
     if beta:
         policy_loss += beta * (-tf.reduce_sum(probs * tf.log(probs + 1e-8), 1))
-    value_loss = tf.square(returns - value)
-    loss = tf.reduce_mean(policy_loss + value_loss)
+    policy_loss = tf.reduce_mean(policy_loss, name="policy_loss")
+    value_loss = tf.reduce_mean(tf.square(returns - value), name="value_loss")
 
-    train_op = opt.minimize(loss)
+    policy_train_op = opt.minimize(policy_loss, var_list=actor_vars)
+    value_train_op = opt.minimize(value_loss, var_list=critic_vars)
 
-    tf.add_to_collection("loss", loss)
-    tf.add_to_collection("train_op", train_op)
+    tf.add_to_collection("policy_loss", policy_loss)
+    tf.add_to_collection("value_loss", value_loss)
+    tf.add_to_collection("policy_train_op", policy_train_op)
+    tf.add_to_collection("value_train_op", value_train_op)

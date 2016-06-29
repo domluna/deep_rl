@@ -45,7 +45,7 @@ class A3CAgent:
         rv = random.random()
         if rv < 0.4:
             end = EPSILON_ENDS[0]
-        elif rv >= 0.4 and rv < 0.7:
+        elif rv < 0.7:
             end = EPSILON_ENDS[1]
         else:
             end = EPSILON_ENDS[2]
@@ -66,10 +66,13 @@ class A3CAgent:
         # inputs and ops
         _actions = self.graph.get_collection("actions")[0]
         _returns = self.graph.get_collection("returns")[0]
-        _states = self.graph.get_collection("states")[0]
-        train_op = self.graph.get_collection("train_op")[0]
-        policy = self.graph.get_collection("policy")[0]
-        value = self.graph.get_collection("value")[0]
+        pol_in = self.graph.get_collection("policy_in")[0]
+        pol_out = self.graph.get_collection("policy_out")[0]
+        pol_train_op = self.graph.get_collection("policy_train_op")[0]
+
+        val_in = self.graph.get_collection("value_in")[0]
+        val_out = self.graph.get_collection("value_out")[0]
+        val_train_op = self.graph.get_collection("value_train_op")[0]
 
         state = env.reset()
 
@@ -83,12 +86,11 @@ class A3CAgent:
                 if random.random() < epsilon:
                     action = env.action_space.sample()
                 else:
-                    # probs = session.run(policy,
-                    #                     feed_dict={_states: state.reshape(1, *state.shape)})[0]
-                    # action = self.action_sampler(probs)[0]
-                    probs = session.run(policy, feed_dict={_states: state.reshape(1, *state.shape)})
+                    probs = session.run(pol_out,
+                                        feed_dict={pol_in: state.reshape(1, *state.shape)})[0]
                     action = self.action_sampler(probs)[0]
-
+                    # probs = session.run(policy, feed_dict={_states: state.reshape(1, *state.shape)})
+                    # action = self.action_sampler(probs)[0]
                 next_state, reward, done, info = env.step(action)
                 states.append(state)
                 actions.append(action)
@@ -103,14 +105,15 @@ class A3CAgent:
                     last_state = states[-1]
                     val = 0
                     if not done:
-                        val = session.run(value,
-                                          feed_dict={_states:
+                        val = session.run(val_out,
+                                          feed_dict={val_in:
                                                      last_state.reshape(1, *last_state.shape)})
                     rewards.append(val)
                     returns = discount(rewards, self.gamma)[:-1]
 
-                    session.run([train_op],
-                                feed_dict={_states: states,
+                    session.run([val_train_op, pol_train_op],
+                                feed_dict={val_in: states,
+                                           pol_in: states,
                                            _returns: returns,
                                            _actions: actions})
 

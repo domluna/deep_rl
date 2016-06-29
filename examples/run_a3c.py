@@ -52,6 +52,7 @@ def sample_policy_action(probs):
 
 def simple_nn(states, n_action, hidden_sizes):
     hiddens = learn.ops.dnn(states, hidden_sizes, activation=tf.nn.tanh)
+    return hiddens
     probs = tf.nn.softmax(layers.fully_connected(hiddens, n_action))
     value = layers.fully_connected(hiddens, 1)
     return probs, value
@@ -60,6 +61,7 @@ def simple_nn(states, n_action, hidden_sizes):
 outdir = FLAGS.outdir
 if outdir == "":
     outdir = tempfile.mkdtemp()
+print(outdir)
 
 monitor_env = EnvWrapper(FLAGS.name)
 monitor_dir = outdir + '/monitor'
@@ -88,7 +90,7 @@ def main(_):
         T = tf.Variable(0, trainable=False)
         tf.add_to_collection("global_step", T)
 
-        agent = A3CAgent(g, FLAGS.exploration_steps, FLAGS.total_steps, FLAGS.gamma, FLAGS.max_traj_len, categorical_sample)
+        agent = A3CAgent(g, FLAGS.exploration_steps, FLAGS.total_steps, FLAGS.gamma, FLAGS.max_traj_len, sample_policy_action)
 
         sv = tf.train.Supervisor(g,
                                  logdir=outdir,
